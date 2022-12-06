@@ -13,3 +13,5 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+subscription-service/db-data/
+subscription-service/myapp
