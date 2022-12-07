@@ -13,7 +13,7 @@ type UserInterface interface {
 	DeleteByID(id int) error
 	Insert(user User) (int, error)
 	ResetPassword(password string) error
-	PasswordMatches(plainText string) (bool, error)
+	PasswordMatches(plainText, hashedPassworkd string) (bool, error)
 }
 
 // PlanInterface is the type for the plan type. Both data.Plan and data.PlanTest

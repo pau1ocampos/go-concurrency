@@ -22,10 +22,10 @@ clean:
 	@echo "Cleaned!"
 
 ## start: an alias to run
-start: run
+start: infra run
 
 ## stop: stops the running application
-stop:
+stop: destroy
 	@echo "Stopping..."
 	@-pkill -SIGTERM -f "./${BINARY_NAME}"
 	@echo "Stopped!"
@@ -36,3 +36,9 @@ restart: stop start
 ## test: runs all tests
 test:
 	go test -v ./...
+
+infra:
+	docker-compose up -d
+
+destroy:
+	docker-compose down
