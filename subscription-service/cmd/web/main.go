@@ -2,8 +2,8 @@ package main
 
 import (
 	"database/sql"
-	"subscription-service/data"
-
+	"encoding/gob"
+	"final-project/data"
 	"fmt"
 	"log"
 	"net/http"
@@ -47,15 +47,33 @@ func main() {
 		ErrorLog: errorLog,
 		Wait:     &wg,
 		Models:   data.New(db),
+		ErrorChan: make(chan error),
+		ErrorChanDone: make(chan bool),
 	}
 
 	// set up mail
+	app.Mailer = app.createMail()
+	go app.listenForMail()
 
 	// listen for signals
 	go app.listenForShutdown()
 
+	// listen for errors
+	go app.listenForErrors()
+
 	// listen for web connections
 	app.serve()
+}
+
+func (app *Config) listenForErrors() {
+	for {
+		select {
+		case err := <-app.ErrorChan:
+			app.ErrorLog.Println(err)
+		case <-app.ErrorChanDone:
+			return
+		}
+	}
 }
 
 func (app *Config) serve() {
@@ -127,6 +145,8 @@ func openDB(dsn string) (*sql.DB, error) {
 
 // initSession sets up a session, using Redis for session store
 func initSession() *scs.SessionManager {
+	gob.Register(data.User{})
+	
 	// set up session
 	session := scs.New()
 	session.Store = redisstore.New(initRedis())
@@ -166,5 +186,35 @@ func (app *Config) shutdown() {
 	// block until waitgroup is empty
 	app.Wait.Wait()
 
+	app.Mailer.DoneChan <- true
+	app.ErrorChanDone <- true
+
 	app.InfoLog.Println("closing channels and shutting down application...")
+	close(app.Mailer.MailerChan)
+	close(app.Mailer.ErrorChan)
+	close(app.Mailer.DoneChan)
+	close(app.ErrorChan)
+	close(app.ErrorChanDone)
+}
+
+func (app *Config) createMail() Mail {
+	// create channels
+	errorChan := make(chan error)
+	mailerChan := make(chan Message, 100)
+	mailerDoneChan := make(chan bool)
+
+	m := Mail{
+		Domain: "localhost",
+		Host: "localhost",
+		Port: 1025,
+		Encryption: "none",
+		FromName: "Info",
+		FromAddress: "info@mycompany.com",
+		Wait: app.Wait,
+		ErrorChan: errorChan,
+		MailerChan: mailerChan,
+		DoneChan: mailerDoneChan,
+	}
+
+	return m
 }

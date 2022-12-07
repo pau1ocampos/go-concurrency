@@ -36,9 +36,3 @@ restart: stop start
 ## test: runs all tests
 test:
 	go test -v ./...
-
-infra:
-	@docker-compose up -d
-
-destroy:
-	@docker-compose down
